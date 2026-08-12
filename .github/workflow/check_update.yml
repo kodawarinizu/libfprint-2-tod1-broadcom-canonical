@@ -1,0 +1,35 @@
+name: Check Canonical driver version
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # diario a las 08:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run version check script
+        id: check
+        run: bash scripts/check_update.sh
+
+      - name: Create Pull Request
+        if: steps.check.outputs.updated == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Update to ${{ steps.check.outputs.new_version }} (Canonical pool)"
+          title: "Driver update available: ${{ steps.check.outputs.new_version }}"
+          body: |
+            Nueva versión detectada en dell.archive.canonical.com.
+
+            - Versión anterior: ${{ steps.check.outputs.old_version }}
+            - Versión nueva: ${{ steps.check.outputs.new_version }}
+            - SHA256 verificado contra `.dsc`: ✅
+            - Tamaño anterior: ${{ steps.check.outputs.old_size }}
+            - Tamaño nuevo: ${{ steps.check.outputs.new_size }}
+
+            **Revisar manualmente antes de mergear.** No auto-mergeado por diseño.
+          branch: auto-update-driver
+          labels: automated-pr, needs-review
